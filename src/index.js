@@ -1,7 +1,8 @@
 export default {
   async fetch(request, env, ctx) {
-    const UPSTASH_URL = env.UPSTASH_URL;
-    const UPSTASH_TOKEN = env.UPSTASH_TOKEN;
+    // 這裡改成 Upstash 官方預設的變數名稱！
+    const UPSTASH_URL = env.UPSTASH_REDIS_REST_URL;
+    const UPSTASH_TOKEN = env.UPSTASH_REDIS_REST_TOKEN;
 
     const redisCommand = ["SET", "test_key", "hello_world", "EX", 600];
 
