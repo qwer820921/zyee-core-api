@@ -1,3 +1,8 @@
 name = "temp-mail-api"
 main = "src/index.js"
 compatibility_date = "2024-04-08"
+
+[triggers]
+# 設定定時任務：這裡的格式是 Cron 表達式
+# "0 0 * * *" 代表每天凌晨 00:00 執行一次 (這絕對能防止 7 天封存)
+crons = ["0 0 * * *"]

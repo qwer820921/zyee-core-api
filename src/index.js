@@ -85,4 +85,29 @@ export default {
       headers: { ...CORS_HEADERS, "Content-Type": "text/plain;charset=UTF-8" } 
     });
   },
+
+  // 定時任務邏輯 (為了讓 Upstash 不會因為 7 天沒有連線而封存)
+  async scheduled(event, env, ctx) {
+    const UPSTASH_URL = env.UPSTASH_REDIS_REST_URL;
+    const UPSTASH_TOKEN = env.UPSTASH_REDIS_REST_TOKEN;
+
+    console.log("正在執行 Upstash 喚醒任務...");
+
+    try {
+      // 隨便讀取一個不存在的 Key，只要有連線動作就能重置 Upstash 的 7 天計時器
+      const response = await fetch(UPSTASH_URL, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${UPSTASH_TOKEN}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(["GET", "keep-alive-ping"])
+      });
+
+      const result = await response.json();
+      console.log("喚醒成功:", JSON.stringify(result));
+    } catch (error) {
+      console.error("喚醒失敗:", error.message);
+    }
+  }
 };
