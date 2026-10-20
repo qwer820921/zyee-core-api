@@ -7,8 +7,10 @@ import { ECC_LEVELS, toSvg, toPng } from '../utils/qrImage.js';
 // GET  /api/qr/image?data=...&format=png|svg&size=400&margin=4&ecc=M
 //      → 直接回傳圖片（可當 <img src>）
 // POST /api/qr/image  body 同上，另可帶 store，產圖後轉存到指定位置：
-//      store: { type: "webhook", url, fileName, folderId, token }
-//      Worker 會把圖片 base64 以 POST 送到 url（例如 Google Apps Script 的 doPost，由它存進 Drive）：
+//      store: { url, folderId, fileName, token }
+//      url      接收端（Google Apps Script 的 /exec，由它把圖片存進 Drive）
+//      folderId 要存放的 Drive 資料夾 ID（由呼叫端決定，之後換資料夾只要換這個值）
+//      Worker 會把圖片 base64 以 POST 送到 url：
 //      { action: "qrsave", token, folderId, fileName, mimeType, base64 }
 const STORE_HOST_ALLOWLIST = ['script.google.com', 'script.googleusercontent.com'];
 const MAX_DATA_LENGTH = 1000;
@@ -59,8 +61,9 @@ export async function handleQRImage(request, env) {
       });
     }
 
-    // 轉存：目前只支援 webhook（由對方自行寫入 Drive 等位置）
-    if (store.type !== 'webhook') return jsonResponse({ success: false, error: "store.type 目前只支援 webhook" }, 400);
+    // 轉存：把圖片送到接收端（GAS），由它寫入 folderId 指定的 Drive 資料夾
+    if (typeof store !== 'object' || !store.url) return jsonResponse({ success: false, error: "store 需包含 url" }, 400);
+    if (!store.folderId) return jsonResponse({ success: false, error: "store 需包含 folderId(Drive 資料夾 ID)" }, 400);
     let target;
     try { target = new URL(store.url); } catch { return jsonResponse({ success: false, error: "store.url 不是有效網址" }, 400); }
     if (target.protocol !== 'https:' || !STORE_HOST_ALLOWLIST.includes(target.hostname)) {
@@ -86,6 +89,10 @@ export async function handleQRImage(request, env) {
     try { stored = JSON.parse(text); } catch { stored = text.slice(0, 500); }
     if (!res.ok) return jsonResponse({ success: false, error: `轉存失敗,對方回應 ${res.status}`, stored }, 502);
 
+    // 接收端(GAS)用 ok:false 表示失敗(例如 token 錯誤、找不到資料夾),要如實回報,不能當成成功
+    if (stored && typeof stored === 'object' && stored.ok === false) {
+      return jsonResponse({ success: false, error: `轉存失敗:${stored.message || stored.code || '接收端回報失敗'}`, stored }, 502);
+    }
     return jsonResponse({ success: true, format, bytes: bytes.length, fileName, stored });
   } catch (err) {
     return jsonResponse({ success: false, error: err.message }, 500);

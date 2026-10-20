@@ -50,13 +50,13 @@ test('參數檢查', async () => {
 test('store 只允許 Google 網域', async () => {
   const req = new Request('https://x.test/api/qr/image', {
     method: 'POST',
-    body: JSON.stringify({ data: 'a', store: { type: 'webhook', url: 'https://evil.example.com/x' } })
+    body: JSON.stringify({ data: 'a', store: { url: 'https://evil.example.com/x', folderId: 'F' } })
   });
   const res = await handleQRImage(req, {});
   assert.equal(res.status, 400);
 });
 
-test('store webhook:送出 base64 與欄位,回傳對方結果', async () => {
+test('store:送出 base64 與欄位,回傳對方結果', async () => {
   const realFetch = globalThis.fetch;
   let sent;
   globalThis.fetch = async (u, init) => {
@@ -68,7 +68,7 @@ test('store webhook:送出 base64 與欄位,回傳對方結果', async () => {
       method: 'POST',
       body: JSON.stringify({
         data: TEXT, format: 'png',
-        store: { type: 'webhook', url: 'https://script.google.com/macros/s/ABC/exec', folderId: 'FOLDER', fileName: 'sn1.png', token: 'T' }
+        store: { url: 'https://script.google.com/macros/s/ABC/exec', folderId: 'FOLDER', fileName: 'sn1.png', token: 'T' }
       })
     });
     const res = await handleQRImage(req, {});
@@ -80,5 +80,28 @@ test('store webhook:送出 base64 與欄位,回傳對方結果', async () => {
     assert.equal(sent.body.fileName, 'sn1.png');
     assert.equal(sent.body.mimeType, 'image/png');
     assert.equal(decodePng(Buffer.from(sent.body.base64, 'base64'))?.data, TEXT);
+  } finally { globalThis.fetch = realFetch; }
+});
+
+test('store 缺 folderId 或 url 回 400', async () => {
+  const post = async (store) => (await handleQRImage(new Request('https://x.test/api/qr/image', {
+    method: 'POST', body: JSON.stringify({ data: 'a', store })
+  }), {})).status;
+  assert.equal(await post({ url: 'https://script.google.com/macros/s/A/exec' }), 400);
+  assert.equal(await post({ folderId: 'F' }), 400);
+});
+
+test('接收端回 ok:false 時,Worker 回 success:false', async () => {
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = async () => new Response(JSON.stringify({ ok: false, code: 'UNAUTHORIZED', message: 'token 錯誤' }), { status: 200 });
+  try {
+    const res = await handleQRImage(new Request('https://x.test/api/qr/image', {
+      method: 'POST',
+      body: JSON.stringify({ data: 'a', store: { url: 'https://script.google.com/macros/s/A/exec', folderId: 'FOLDER' } })
+    }), {});
+    const j = await res.json();
+    assert.equal(res.status, 502);
+    assert.equal(j.success, false);
+    assert.equal(j.stored.code, 'UNAUTHORIZED');
   } finally { globalThis.fetch = realFetch; }
 });

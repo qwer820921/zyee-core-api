@@ -39,7 +39,7 @@
 | `/q/:id`          | GET  | 掃描跳轉（302 Redirect）     |
 | `/api/qr/image`   | GET/POST | 產生 QR Code 圖片（PNG/SVG），POST 可帶 `store` 轉存 |
 
-**`/api/qr/image` 參數**:`data`(必填,≤1000 字)、`format`(png|svg,預設 png)、`size`(100~2000,預設 400)、`margin`(0~20,預設 4)、`ecc`(L|M|Q|H,預設 M)。GET 直接回圖;POST 若帶 `store: { type:"webhook", url, fileName, folderId, token }`,會把圖片 base64 以 POST 送到 `url`(只允許 `script.google.com`、`script.googleusercontent.com`,例如 GAS `doPost` 存進 Drive),回傳對方結果。
+**`/api/qr/image` 參數**:`data`(必填,≤1000 字)、`format`(png|svg,預設 png)、`size`(100~2000,預設 400)、`margin`(0~20,預設 4)、`ecc`(L|M|Q|H,預設 M)。GET 直接回圖;POST 若帶 `store: { url, folderId, fileName, token }`,會把圖片 base64 以 POST 送到 `url`(接收端,只允許 `script.google.com`、`script.googleusercontent.com`,例如 GAS `doPost`),由它存進 `folderId` 指定的 Drive 資料夾(資料夾由呼叫端決定,不寫死),回傳對方結果。
 
 ### ⏰ 定時任務 (Cron Trigger)
 
