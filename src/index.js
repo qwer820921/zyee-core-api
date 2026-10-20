@@ -1,6 +1,7 @@
 import { CORS_HEADERS } from './utils/cors.js';
 import * as MailApi from './api/mail.js';
 import * as QrApi from './api/qr.js';
+import { handleQRImage } from './api/qrImage.js';
 
 export default {
   async fetch(request, env, ctx) {
@@ -38,6 +39,10 @@ export default {
     // 更新動態碼的真實網址 (POST)
     if (url.pathname === '/api/qr/update' && request.method === 'POST') {
       return await QrApi.handleUpdateQR(request, env);
+    }
+    // 產生 QR Code 圖片，可選擇轉存 (GET 直接回圖 / POST 可帶 store)
+    if (url.pathname === '/api/qr/image' && (request.method === 'GET' || request.method === 'POST')) {
+      return await handleQRImage(request, env);
     }
     // 掃描跳轉短網址 (例如掃描後會前往 /q/x8y9z)
     if (url.pathname.startsWith('/q/')) {

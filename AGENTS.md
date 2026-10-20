@@ -37,6 +37,9 @@
 | `/api/qr/create`  | POST | 建立動態短網址（30 天有效）   |
 | `/api/qr/update`  | POST | 更新短網址的真實目標          |
 | `/q/:id`          | GET  | 掃描跳轉（302 Redirect）     |
+| `/api/qr/image`   | GET/POST | 產生 QR Code 圖片（PNG/SVG），POST 可帶 `store` 轉存 |
+
+**`/api/qr/image` 參數**:`data`(必填,≤1000 字)、`format`(png|svg,預設 png)、`size`(100~2000,預設 400)、`margin`(0~20,預設 4)、`ecc`(L|M|Q|H,預設 M)。GET 直接回圖;POST 若帶 `store: { type:"webhook", url, fileName, folderId, token }`,會把圖片 base64 以 POST 送到 `url`(只允許 `script.google.com`、`script.googleusercontent.com`,例如 GAS `doPost` 存進 Drive),回傳對方結果。
 
 ### ⏰ 定時任務 (Cron Trigger)
 
@@ -53,8 +56,10 @@ src/
 ├── index.js          # 主入口：路由分發 + Cron Handler
 ├── api/
 │   ├── mail.js       # 10 分鐘信箱 API
-│   └── qr.js         # 動態 QR Code API
+│   ├── qr.js         # 動態 QR Code API
+│   └── qrImage.js    # QR Code 圖片產生與轉存 API
 └── utils/
+    ├── qrImage.js    # QR 矩陣轉 SVG/PNG（純 JS）
     ├── cors.js       # CORS 標頭設定
     └── redis.js      # Upstash Redis REST 工具函式
 ```
@@ -115,4 +120,4 @@ npx wrangler tail
 
 > ⚠️ **Redis TTL**：信箱資料 TTL 為 600 秒（10 分鐘），QR Code 資料 TTL 為 2592000 秒（30 天）。QR Code 每次被掃描時會自動續命。
 
-> ⚠️ **無 package.json**：此專案目前沒有 `package.json`，直接使用 Wrangler CLI 管理。如果未來需要引入第三方套件，需先執行 `npm init` 建立。
+> ⚠️ **package.json**：2026-10-20 為 QR 圖片功能新增，依賴 `qrcode-generator`；開發用 `jsqr`、`pngjs` 只供測試（`npm test`）。部署前需 `npm install`。
